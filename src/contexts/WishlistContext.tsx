@@ -1,44 +1,49 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface WishlistItem {
   id: string;
-  userId: string;
+  user_id: string;
   name: string;
   description: string;
   price?: number;
-  storeUrl?: string;
-  imageUrl?: string;
+  store_url?: string;
+  image_url?: string;
   category?: string;
-  priority?: 'low' | 'medium' | 'high';
-  isReserved: boolean;
-  reservedBy?: string;
-  reservedAt?: string;
-  createdAt: string;
+  priority?: number;
+  is_reserved: boolean;
+  reserved_by?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Reservation {
   id: string;
-  itemId: string;
-  itemName: string;
-  itemImage?: string;
-  ownerName: string;
-  reservedBy: string;
-  reservedAt: string;
+  item_id: string;
+  reserved_by: string;
+  reserved_at: string;
+  wishlist_items?: {
+    name: string;
+    image_url?: string;
+    user_id: string;
+  };
 }
 
 interface WishlistContextType {
   items: WishlistItem[];
   reservations: Reservation[];
-  addItem: (item: Omit<WishlistItem, 'id' | 'userId' | 'isReserved' | 'createdAt'>) => void;
-  updateItem: (id: string, updates: Partial<WishlistItem>) => void;
-  deleteItem: (id: string) => void;
-  reserveItem: (item: WishlistItem, reservedBy: string) => void;
-  cancelReservation: (itemId: string) => void;
+  addItem: (item: Omit<WishlistItem, 'id' | 'user_id' | 'is_reserved' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateItem: (id: string, updates: Partial<WishlistItem>) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
+  reserveItem: (item: WishlistItem, reservedBy: string) => Promise<void>;
+  cancelReservation: (itemId: string) => Promise<void>;
   getItemsByUser: (userId: string) => WishlistItem[];
   searchItems: (query: string) => WishlistItem[];
-  filterItems: (category?: string, priority?: string) => WishlistItem[];
+  filterItems: (category?: string, priority?: number) => WishlistItem[];
+  loadItems: () => Promise<void>;
+  loadReservations: () => Promise<void>;
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
@@ -57,114 +62,215 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [reservations, setReservations] = useState<Reservation[]>([]);
 
   useEffect(() => {
-    // Load data from localStorage
-    const savedItems = localStorage.getItem('wishlistItems');
-    const savedReservations = localStorage.getItem('reservations');
-    
-    if (savedItems) {
-      setItems(JSON.parse(savedItems));
+    if (user) {
+      loadItems();
+      loadReservations();
+    } else {
+      setItems([]);
+      setReservations([]);
     }
-    if (savedReservations) {
-      setReservations(JSON.parse(savedReservations));
-    }
-  }, []);
+  }, [user]);
 
-  const saveItems = (newItems: WishlistItem[]) => {
-    setItems(newItems);
-    localStorage.setItem('wishlistItems', JSON.stringify(newItems));
-  };
-
-  const saveReservations = (newReservations: Reservation[]) => {
-    setReservations(newReservations);
-    localStorage.setItem('reservations', JSON.stringify(newReservations));
-  };
-
-  const addItem = (itemData: Omit<WishlistItem, 'id' | 'userId' | 'isReserved' | 'createdAt'>) => {
+  const loadItems = async () => {
     if (!user) return;
-    
-    const newItem: WishlistItem = {
-      ...itemData,
-      id: Math.random().toString(36).substr(2, 9),
-      userId: user.id,
-      isReserved: false,
-      createdAt: new Date().toISOString(),
-    };
-    
-    saveItems([...items, newItem]);
+
+    try {
+      const { data, error } = await supabase
+        .from('wishlist_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setItems(data || []);
+    } catch (error) {
+      console.error('Error loading items:', error);
+    }
   };
 
-  const updateItem = (id: string, updates: Partial<WishlistItem>) => {
-    const updatedItems = items.map(item => 
-      item.id === id ? { ...item, ...updates } : item
-    );
-    saveItems(updatedItems);
+  const loadReservations = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          wishlist_items (
+            name,
+            image_url,
+            user_id
+          )
+        `)
+        .eq('reserved_by', user.id);
+
+      if (error) throw error;
+      setReservations(data || []);
+    } catch (error) {
+      console.error('Error loading reservations:', error);
+    }
   };
 
-  const deleteItem = (id: string) => {
-    const updatedItems = items.filter(item => item.id !== id);
-    saveItems(updatedItems);
-    
-    // Remove any reservations for this item
-    const updatedReservations = reservations.filter(res => res.itemId !== id);
-    saveReservations(updatedReservations);
+  const addItem = async (itemData: Omit<WishlistItem, 'id' | 'user_id' | 'is_reserved' | 'created_at' | 'updated_at'>) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('wishlist_items')
+        .insert({
+          ...itemData,
+          user_id: user.id,
+          is_reserved: false,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setItems(prev => [data, ...prev]);
+    } catch (error) {
+      console.error('Error adding item:', error);
+      throw error;
+    }
   };
 
-  const reserveItem = (item: WishlistItem, reservedBy: string) => {
-    // Update item as reserved
-    updateItem(item.id, {
-      isReserved: true,
-      reservedBy,
-      reservedAt: new Date().toISOString(),
-    });
+  const updateItem = async (id: string, updates: Partial<WishlistItem>) => {
+    try {
+      const { data, error } = await supabase
+        .from('wishlist_items')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
 
-    // Add to reservations
-    const newReservation: Reservation = {
-      id: Math.random().toString(36).substr(2, 9),
-      itemId: item.id,
-      itemName: item.name,
-      itemImage: item.imageUrl,
-      ownerName: 'Item Owner', // In real app, get from user data
-      reservedBy,
-      reservedAt: new Date().toISOString(),
-    };
+      if (error) throw error;
 
-    saveReservations([...reservations, newReservation]);
+      setItems(prev => prev.map(item => 
+        item.id === id ? { ...item, ...data } : item
+      ));
+    } catch (error) {
+      console.error('Error updating item:', error);
+      throw error;
+    }
   };
 
-  const cancelReservation = (itemId: string) => {
-    // Update item as not reserved
-    updateItem(itemId, {
-      isReserved: false,
-      reservedBy: undefined,
-      reservedAt: undefined,
-    });
+  const deleteItem = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('wishlist_items')
+        .delete()
+        .eq('id', id);
 
-    // Remove from reservations
-    const updatedReservations = reservations.filter(res => res.itemId !== itemId);
-    saveReservations(updatedReservations);
+      if (error) throw error;
+
+      setItems(prev => prev.filter(item => item.id !== id));
+      setReservations(prev => prev.filter(res => res.item_id !== id));
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      throw error;
+    }
+  };
+
+  const reserveItem = async (item: WishlistItem, reservedBy: string) => {
+    try {
+      // Start transaction-like operation
+      const { error: updateError } = await supabase
+        .from('wishlist_items')
+        .update({
+          is_reserved: true,
+          reserved_by: reservedBy,
+        })
+        .eq('id', item.id);
+
+      if (updateError) throw updateError;
+
+      const { data: reservationData, error: reservationError } = await supabase
+        .from('reservations')
+        .insert({
+          item_id: item.id,
+          reserved_by: reservedBy,
+        })
+        .select()
+        .single();
+
+      if (reservationError) throw reservationError;
+
+      // Update local state
+      setItems(prev => prev.map(i => 
+        i.id === item.id 
+          ? { ...i, is_reserved: true, reserved_by: reservedBy }
+          : i
+      ));
+
+      if (reservedBy === user?.id) {
+        setReservations(prev => [...prev, {
+          ...reservationData,
+          wishlist_items: {
+            name: item.name,
+            image_url: item.image_url,
+            user_id: item.user_id,
+          }
+        }]);
+      }
+    } catch (error) {
+      console.error('Error reserving item:', error);
+      throw error;
+    }
+  };
+
+  const cancelReservation = async (itemId: string) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('wishlist_items')
+        .update({
+          is_reserved: false,
+          reserved_by: null,
+        })
+        .eq('id', itemId);
+
+      if (updateError) throw updateError;
+
+      const { error: deleteError } = await supabase
+        .from('reservations')
+        .delete()
+        .eq('item_id', itemId);
+
+      if (deleteError) throw deleteError;
+
+      // Update local state
+      setItems(prev => prev.map(item => 
+        item.id === itemId 
+          ? { ...item, is_reserved: false, reserved_by: undefined }
+          : item
+      ));
+
+      setReservations(prev => prev.filter(res => res.item_id !== itemId));
+    } catch (error) {
+      console.error('Error canceling reservation:', error);
+      throw error;
+    }
   };
 
   const getItemsByUser = (userId: string) => {
-    return items.filter(item => item.userId === userId);
+    return items.filter(item => item.user_id === userId);
   };
 
   const searchItems = (query: string) => {
     if (!user) return [];
-    const userItems = items.filter(item => item.userId === user.id);
+    const userItems = items.filter(item => item.user_id === user.id);
     return userItems.filter(item =>
       item.name.toLowerCase().includes(query.toLowerCase()) ||
       item.description.toLowerCase().includes(query.toLowerCase())
     );
   };
 
-  const filterItems = (category?: string, priority?: string) => {
+  const filterItems = (category?: string, priority?: number) => {
     if (!user) return [];
-    let userItems = items.filter(item => item.userId === user.id);
+    let userItems = items.filter(item => item.user_id === user.id);
     
     if (category) {
       userItems = userItems.filter(item => item.category === category);
     }
-    if (priority) {
+    if (priority !== undefined) {
       userItems = userItems.filter(item => item.priority === priority);
     }
     
@@ -183,6 +289,8 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       getItemsByUser,
       searchItems,
       filterItems,
+      loadItems,
+      loadReservations,
     }}>
       {children}
     </WishlistContext.Provider>

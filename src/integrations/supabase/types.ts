@@ -9,7 +9,135 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          birth_date: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          profile_picture: string | null
+          updated_at: string
+        }
+        Insert: {
+          birth_date?: string | null
+          created_at?: string
+          email: string
+          id: string
+          name: string
+          profile_picture?: string | null
+          updated_at?: string
+        }
+        Update: {
+          birth_date?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          profile_picture?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reservations: {
+        Row: {
+          id: string
+          item_id: string
+          reserved_at: string
+          reserved_by: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          reserved_at?: string
+          reserved_by: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          reserved_at?: string
+          reserved_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "wishlist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_reserved_by_fkey"
+            columns: ["reserved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wishlist_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_reserved: boolean | null
+          name: string
+          price: number | null
+          priority: number | null
+          reserved_by: string | null
+          store_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_reserved?: boolean | null
+          name: string
+          price?: number | null
+          priority?: number | null
+          reserved_by?: string | null
+          store_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_reserved?: boolean | null
+          name?: string
+          price?: number | null
+          priority?: number | null
+          reserved_by?: string | null
+          store_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_items_reserved_by_fkey"
+            columns: ["reserved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

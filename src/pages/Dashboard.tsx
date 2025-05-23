@@ -7,12 +7,12 @@ import { Heart, Gift, Users, Plus, Share, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const { items, reservations } = useWishlist();
 
-  const userItems = items.filter(item => item.userId === user?.id);
-  const userReservations = reservations.filter(res => res.reservedBy === user?.id);
-  const recentItems = userItems.slice(-3);
+  const userItems = items;
+  const userReservations = reservations;
+  const recentItems = userItems.slice(0, 3);
 
   const stats = [
     {
@@ -45,7 +45,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">
-              Welcome back, {user?.name}! 👋
+              Welcome back, {profile?.name || 'User'}! 👋
             </h1>
             <p className="text-blue-100 text-lg">
               Ready to add more items to your wishlist or check what friends want?
@@ -132,7 +132,7 @@ const Dashboard = () => {
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{item.name}</p>
                       <p className="text-sm text-gray-500">
-                        Added {new Date(item.createdAt).toLocaleDateString()}
+                        Added {new Date(item.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
