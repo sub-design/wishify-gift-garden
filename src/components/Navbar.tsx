@@ -13,7 +13,7 @@ import {
 import { Heart, Users, BookmarkPlus, User, LogOut, Menu, X } from 'lucide-react';
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -68,19 +68,19 @@ const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={user?.profilePicture} alt={user?.name} />
+                    <AvatarImage src={profile?.profile_picture} alt={profile?.name} />
                     <AvatarFallback>
-                      {user?.name?.charAt(0).toUpperCase()}
+                      {profile?.name?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-2 py-1.5 text-sm font-medium text-gray-900">
-                  {user?.name}
+                  {profile?.name || 'User'}
                 </div>
                 <div className="px-2 py-1.5 text-sm text-gray-500">
-                  {user?.email}
+                  {profile?.email || user?.email}
                 </div>
                 <DropdownMenuItem asChild>
                   <Link to="/account" className="flex items-center">

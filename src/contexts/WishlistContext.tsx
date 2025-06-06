@@ -259,7 +259,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const userItems = items.filter(item => item.user_id === user.id);
     return userItems.filter(item =>
       item.name.toLowerCase().includes(query.toLowerCase()) ||
-      item.description.toLowerCase().includes(query.toLowerCase())
+      (item.description && item.description.toLowerCase().includes(query.toLowerCase()))
     );
   };
 

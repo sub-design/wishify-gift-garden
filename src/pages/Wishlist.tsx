@@ -16,7 +16,7 @@ const Wishlist = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
-  const userItems = items.filter(item => item.userId === user?.id);
+  const userItems = items.filter(item => item.user_id === user?.id);
   const displayedItems = searchQuery ? searchItems(searchQuery) : userItems;
 
   return (

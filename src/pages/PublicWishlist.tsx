@@ -10,7 +10,7 @@ const PublicWishlist = () => {
   const { getItemsByUser } = useWishlist();
 
   const userItems = userId ? getItemsByUser(userId) : [];
-  const visibleItems = userItems.filter(item => !item.isReserved);
+  const visibleItems = userItems.filter(item => !item.is_reserved);
 
   // Mock user data - in real app, fetch from API
   const ownerName = "Friend's Name";
